@@ -15,25 +15,23 @@ dependencies {
 }
 
 application {
-    mainClass = findProperty('mainClass') ?: 'Fuzzer'
+    mainClass = findProperty('mainClass') ?: 'EvaluationFuzzer'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
 }
 
-tasks.register('runFuzzer', JavaExec) {
-    group = 'application'
-    description = 'Run the Fuzzer main class'
-    mainClass.set('Fuzzer')
-    classpath = sourceSets.main.get().runtimeClasspath
+tasks.register("runBasicFuzzer", JavaExec) {
+    group = ApplicationPlugin.APPLICATION_GROUP
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Fuzzer'
 }
 
-tasks.register('runEvaluationFuzzer', JavaExec) {
-    group = 'application'
-    description = 'Run the EvaluationFuzzer main class'
-    mainClass.set('EvaluationFuzzer')
-    classpath = sourceSets.main.get().runtimeClasspath
+tasks.register("runEvaluationFuzzer", JavaExec) {
+    group = ApplicationPlugin.APPLICATION_GROUP
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'EvaluationFuzzer'
 }
 
 java {
