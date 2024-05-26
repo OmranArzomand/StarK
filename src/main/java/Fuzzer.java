@@ -45,11 +45,13 @@ public class Fuzzer {
 
           if (exitCode == 124) {
             System.out.println("TIMEOUT (Trying again)");
-          } else {
+          } else if (exitCode == 0) {
             return;
+          } else {
+            System.out.println("GENERATOR CRASH (Trying again)");
           }
         } catch (Exception e) {
-          System.err.println("GENERATOR CRASH");
+          System.err.println(e);
         }
       }
     }

@@ -43,7 +43,7 @@ public class EvalutaionFuzzer {
         sb.append(
           "{\"" + config + "\":" 
                              + "{\"averageGenerationTime\": 0,"
-                              + "\numberOfGeneratorCrashes\": 0," 
+                              + "\"numberOfGeneratorCrashes\": 0," 
                               + "\"numberOfTimeouts\": 0}}");
       }
       
@@ -71,6 +71,7 @@ public class EvalutaionFuzzer {
       pb.directory(new File("./scripts"));
       while (true) {
         try {
+          long startTime = System.nanoTime();
           Process p = pb.start();
           StringBuilder output = new StringBuilder();
           try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
@@ -79,22 +80,30 @@ public class EvalutaionFuzzer {
                 output.append(line).append(System.lineSeparator());
             }
           }
-          System.out.println(output.toString());
+          
           int exitCode = p.waitFor();
+          long endTime = System.nanoTime();
 
           if (exitCode == 124) {
+            System.out.println("TIMEOUT (Trying again)");
             ObjectNode configJson = (ObjectNode) generatorResults.get(config);
             configJson.put("numberOfTimeouts", 
               configJson.get("numberOfTimeouts").asInt() + 1);
-            System.out.println("TIMEOUT (Trying again)");
-          } else {
+          } else if (exitCode == 0) {
+            long duration = (endTime - startTime) / 1000000;
+            System.out.println("Took " + duration + "ms");
+            ObjectNode configJson = (ObjectNode) generatorResults.get(config);
+            long avgDuration = (configJson.get("averageGenerationTime").asLong() * (programIndex - 1) + duration) / programIndex;
+            configJson.put("averageGenerationTime", avgDuration);
             return;
+          } else {
+            System.out.println("GENERATOR CRASH (Trying again)");
+            ObjectNode configJson = (ObjectNode) generatorResults.get(config);
+            configJson.put("numberOfGeneratorCrashes", 
+              configJson.get("numberOfGeneratorCrashes").asInt() + 1);
           }
         } catch (Exception e) {
-          ObjectNode configJson = (ObjectNode) generatorResults.get(config);
-          configJson.put("numberOfGeneratorCrashes", 
-              configJson.get("numberOfGeneratorCrashes").asInt() + 1);
-          System.out.println("GENERATOR CRASH");
+          System.err.println(e);
         }
       }
     }
