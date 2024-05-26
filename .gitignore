@@ -27,3 +27,9 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+.gradle/
+
+generators/*/out/
+build/
+output/

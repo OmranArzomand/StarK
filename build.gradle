@@ -10,6 +10,8 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.1'
 
     implementation 'com.google.guava:guava:31.1-jre'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.0'
 }
 
 application {
