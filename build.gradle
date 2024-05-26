@@ -15,9 +15,28 @@ dependencies {
 }
 
 application {
-    mainClass = 'ConcurrentFuzzer'
+    mainClass = findProperty('mainClass') ?: 'Fuzzer'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+tasks.register('runFuzzer', JavaExec) {
+    group = 'application'
+    description = 'Run the Fuzzer main class'
+    mainClass.set('Fuzzer')
+    classpath = sourceSets.main.get().runtimeClasspath
+}
+
+tasks.register('runEvaluationFuzzer', JavaExec) {
+    group = 'application'
+    description = 'Run the EvaluationFuzzer main class'
+    mainClass.set('EvaluationFuzzer')
+    classpath = sourceSets.main.get().runtimeClasspath
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
