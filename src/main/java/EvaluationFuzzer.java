@@ -10,9 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public class EvaluationFuzzer {
-    public static final int NUMBER_OF_PROGRAMS_PER_CONGIFG = 1;
+    public static final int NUMBER_OF_PROGRAMS_PER_CONGIFG = 10;
     public static final String GENERATORS_DIR = "../generators/";
-    public static final String[] CONFIGS = new String[]{"config1"};
+    public static final String[] CONFIGS = new String[]{"config2"};
     private static final ObjectMapper mapper = new ObjectMapper();
     private static ObjectNode generatorResults;
     private static final String GENERATOR_RESULTS_LOCATION = "./output/generatorResults.json";
