@@ -19,7 +19,10 @@ class Program {
 }
 
 class Imports {
+  @weight(0)
   imports ("import java.util.Objects\n") {}
+
+  no_imports("") {}
 }
 
 class OptionalGlobalDeclarationList {
@@ -40,7 +43,7 @@ class OptionalGlobalDeclarationList {
 
 }
 
-@list(200)
+@list(6)
 class GlobalDeclarationList {
 
   syn symbols_after : SymbolTable;
@@ -53,7 +56,7 @@ class GlobalDeclarationList {
     this.symbols_after = decl.symbols_after;
   }
 
-  @weight(10)
+  @weight(100)
   mult_decl ("${decl : GlobalDeclaration}\n
               ${rest : GlobalDeclarationList}") {
     decl.symbols_before = this.symbols_before;
@@ -553,7 +556,7 @@ class ClassMember {
   }
 
   secondary_constructor ("constructor (${params : ParameterDeclarationList})${delagation : OptionalConstructorDelegation} {\+${stmts : Block}\-}") {
-    this.valid = (not (Function:paramsClash (Type:getConstructors this.class_type_before) params.params));
+    this.valid = true; #(not (Function:paramsClash (Type:getConstructors this.class_type_before) params.params));
     this.valid2 = (not (Type:isInterface this.class_type_before));
 
     params.symbols_before = (SymbolTable:enterScope this.symbols_before);
@@ -755,6 +758,7 @@ class ConstructorList {
   syn non_property_constrcutor_params : CustomList;
   syn property_constrcutor_params : CustomList;
 
+  @weight(1)
   no_param ("") {
     this.symbols_after = this.symbols_before;
     this.params = (CustomList:empty);
@@ -762,7 +766,7 @@ class ConstructorList {
     this.property_constrcutor_params = (CustomList:empty);
   }
 
-  @weight(7)
+  @weight(10)
   mult_param ("${param : ConstructorParameterDeclaration}, ${rest : ConstructorList}") {
     param.symbols_before = this.symbols_before;
     rest.symbols_before = (if param.add_to_properties (SymbolTable:put this.symbols_before param.symbol) this.symbols_before);
@@ -994,10 +998,17 @@ class Block {
 
   syn symbols_after : SymbolTable;
 
-  block ("${stmts : StmtList}${hash : PrintHash}") {
+  @weight(0)
+  block_with_hash ("${stmts : StmtList}${hash : PrintHash}") {
     stmts.symbols_before = this.symbols_before;
 
     hash.symbols_before = stmts.symbols_after;
+
+    this.symbols_after = stmts.symbols_after;
+  }
+
+  block_without_hash("${stmts : StmtList}") {
+    stmts.symbols_before = this.symbols_before;
 
     this.symbols_after = stmts.symbols_after;
   }
@@ -1011,21 +1022,21 @@ class PrintHash {
   }
 }
 
-@list(100)
+@list(19)
 class StmtList {
 
   inh symbols_before : SymbolTable;
 
   syn symbols_after : SymbolTable;
 
-  @weight(2)
+  @weight(1)
   one_stmt ("${stmt : Stmt}") {
     stmt.symbols_before = this.symbols_before;
     
     this.symbols_after = stmt.symbols_after;
   }
 
-  @weight(50)
+  @weight(100)
   mult_stmt ("${stmt : Stmt}\n${rest : StmtList}") {
     stmt.symbols_before = this.symbols_before;
 
@@ -1053,6 +1064,38 @@ class Stmt {
     this.symbols_after = (SymbolTable:put this.symbols_before (Type:addMemberFunction extension_func.type extension_func.function));
   }
 
+  @weight(1)
+  if ("if (${expr : Expr}) {\+${if_block : Stmt}\-} else {\+${else_block : Stmt}\-}") {
+    this.possible = true;
+
+    expr.expected_type = (SymbolTable:getAsType this.symbols_before "Boolean");
+    expr.symbols_before = this.symbols_before;
+
+    if_block.symbols_before = (SymbolTable:enterScope this.symbols_before);
+
+    else_block.symbols_before = (SymbolTable:enterScope this.symbols_before);
+
+    this.symbols_after = this.symbols_before;
+  }
+
+  @weight(1)
+  switch ("when (${expr1 : Expr}) {\+${expr2 : Expr} -> {\+${when_block : Stmt}\-}\n else -> {\+${else_block : Stmt}\-}\-}") {
+    this.possible = true;
+
+    expr1.expected_type = (SymbolTable:getAsType this.symbols_before "Any");
+    expr1.symbols_before = this.symbols_before;
+    
+    expr2.expected_type = expr1.type;
+    expr2.symbols_before = this.symbols_before;
+    
+    when_block.symbols_before = (SymbolTable:enterScope this.symbols_before);
+
+    else_block.symbols_before = (SymbolTable:enterScope this.symbols_before);
+
+    this.symbols_after = this.symbols_before;
+  }
+
+  @weight(3)
   call ("${call : Call}") {
     this.possible = true;
 
@@ -1062,6 +1105,7 @@ class Stmt {
     this.symbols_after = this.symbols_before;
   }
 
+  @weight(3)
   member_function_call ("${member_function_call : MemberFunctionCall}") {
     this.possible = true;
     
@@ -1071,6 +1115,7 @@ class Stmt {
     this.symbols_after = this.symbols_before;
   }
 
+  @weight(10)
   assign ("${assign : AssignStmt}") {
     this.possible = true;
 
@@ -1088,6 +1133,7 @@ class Stmt {
     this.symbols_after = this.symbols_before;
   }
 
+  @weight(10)
   var_decl("${decl : VariableDeclaration}\n") {
     this.possible = true;
 
@@ -1561,7 +1607,7 @@ class OptionalTypeUpperBound {
     this.has_type = false;
   }
 
-  @weight(0)
+  @weight(1)
   type_annotation(": ${type: Type}") {
     this.valid = true;
     type.symbols_before = this.symbols_before;
@@ -1625,7 +1671,7 @@ class Expr {
   grd valid;
   grd valid2;
 
-  @weight(10)
+  @weight(20)
   atom ("${atom : ExprAtom}") {
     this.valid = true;
     this.valid2 = true;
