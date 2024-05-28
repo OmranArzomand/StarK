@@ -34,6 +34,12 @@ tasks.register("runEvaluationFuzzer", JavaExec) {
     mainClass = 'EvaluationFuzzer'
 }
 
+tasks.register("runGenerator", JavaExec) {
+    group = ApplicationPlugin.APPLICATION_GROUP
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'Generator'
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
