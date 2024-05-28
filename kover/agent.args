@@ -1,0 +1,2 @@
+report.file=../output/tmp/kover-report.ic
+report.append=true
