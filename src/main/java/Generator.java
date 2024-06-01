@@ -1,7 +1,11 @@
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -67,12 +71,21 @@ public class Generator {
         }
     }
   }
-  
 
   public static void main(String[] args) {
 
-    String config = args[0];
-    int numPrograms = Integer.parseInt(args[1]);
+    if (args[0].equals("number")) {
+      String config = args[1];
+      int numPrograms = Integer.parseInt(args[2]);
+      generateNumber(config, numPrograms);
+    } else if (args[0].equals("time")) {
+      String config = args[1];
+      int minutes = Integer.parseInt(args[2]);
+      generateTime(config, minutes);
+    }
+  }
+
+  public static void generateNumber(String config, int numPrograms) {
     String resultsJsonFilePath = "./output/" + config + "/generatorResults.json";
 
     generatorResults = initialiseGeneratorResults(resultsJsonFilePath);
@@ -108,6 +121,45 @@ public class Generator {
     } catch (InterruptedException e) {
       System.out.println("======= GENERATION FAILED ======");
       e.printStackTrace();
+    }
+  }
+
+  public static void generateTime(String config, int minutes) {
+    String resultsJsonFilePath = "./output/" + config + "/generatorResults.json";
+
+    generatorResults = initialiseGeneratorResults(resultsJsonFilePath);
+
+    Instant start = Instant.now();
+    Instant end = start.plus(Duration.ofMinutes(minutes));
+
+    int currentFilesGenerated = (generatorResults.get("filesGenerated")).asInt();
+    int counter = 1;
+    File timeRemainingFile = new File("./output/" + config + "/timeRemaining.txt");
+    try {
+      timeRemainingFile.createNewFile();
+    } catch (IOException e) {
+      System.out.println("Failed to create timeRemaining.txt file (Stopping generation)");
+      System.exit(-1);
+    }
+    while (Instant.now().isBefore(end)) {
+      Instant now = Instant.now();
+      Duration remaining = Duration.between(now, end);
+      long minutesRemaining = remaining.toMinutes();
+      long secondsRemaining = remaining.getSeconds() % 60;
+      System.out.printf("Time remaining: %d minutes, %d seconds%n", minutesRemaining, secondsRemaining);
+      try {
+        FileWriter writer = new FileWriter(timeRemainingFile);
+        timeRemainingFile.createNewFile();
+        writer.write("Time remaining: " + minutesRemaining + " minutes, " + secondsRemaining + " seconds");
+        writer.close();
+      } catch (IOException e) {
+        System.out.println("Failed to write to timeRemaining.txt (Stopping generation)");
+        System.exit(-1);
+      }
+      GeneratorResult res = new GenerateTask(config, "prog" + (currentFilesGenerated + counter) + ".kt").call();
+      updateGeneratorResults(generatorResults, res);
+      saveJsonToToFile(generatorResults, resultsJsonFilePath);
+      counter++;
     }
   }
 
@@ -179,6 +231,7 @@ public class Generator {
       String progLocation = "output/" + config + "/programs/" + progName;
       String generatorConfigDir = "../" + GENERATORS_DIR + config;
       ProcessBuilder pb = new ProcessBuilder("./generate.sh", generatorConfigDir, "../" + progLocation);
+      //ProcessBuilder pb = new ProcessBuilder("./generateBBF.sh", generatorConfigDir, "../" + progLocation);
       pb.directory(new File("./scripts"));
 
       double wallGenerationTime;
