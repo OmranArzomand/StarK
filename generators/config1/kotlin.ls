@@ -19,9 +19,9 @@ class Program {
 }
 
 class Imports {
-  @weight(0)
   imports ("import java.util.Objects\n") {}
 
+  @weight(0)
   no_imports("") {}
 }
 
@@ -998,7 +998,6 @@ class Block {
 
   syn symbols_after : SymbolTable;
 
-  @weight(0)
   block_with_hash ("${stmts : StmtList}${hash : PrintHash}") {
     stmts.symbols_before = this.symbols_before;
 
@@ -1007,6 +1006,7 @@ class Block {
     this.symbols_after = stmts.symbols_after;
   }
 
+  @weight(0)
   block_without_hash("${stmts : StmtList}") {
     stmts.symbols_before = this.symbols_before;
 

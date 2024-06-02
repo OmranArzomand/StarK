@@ -22,16 +22,10 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
-tasks.register("runBasicFuzzer", JavaExec) {
+tasks.register("runConcurrentFuzzer", JavaExec) {
     group = ApplicationPlugin.APPLICATION_GROUP
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'Fuzzer'
-}
-
-tasks.register("runEvaluationFuzzer", JavaExec) {
-    group = ApplicationPlugin.APPLICATION_GROUP
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'EvaluationFuzzer'
+    mainClass = 'ConcurrentFuzzer'
 }
 
 tasks.register("runGenerator", JavaExec) {
