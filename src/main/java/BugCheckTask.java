@@ -1,7 +1,6 @@
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class BugCheckTask implements Runnable {
   public final String progName;
@@ -25,20 +24,7 @@ public class BugCheckTask implements Runnable {
 
     assert(exitCodes.size() == ConcurrentFuzzer.COMPILERS.length);
     if (!exitCodes.stream().allMatch(item -> item == 0)) {
-      File destination;
-      if (exitCodes.stream().allMatch(item -> item == exitCodes.getFirst())) {
-        System.out.println("BUG FOUND: all compilers failed to compile " + progName);
-        destination = new File(ConcurrentFuzzer.COMPILER_ERROR_BUG_DIR + progName);
-      } else {
-        System.out.println("BUG FOUND: some compilers failed to compile " + progName);
-        destination = new File(ConcurrentFuzzer.COMPILER_ERROR_MISMATCH_BUG_DIR + progName);
-      }
-      try {
-        destination.createNewFile();
-      } catch (IOException e) {}
-      
-      new File(progPath).renameTo(destination);
-      cleanUp();
+      handleBug("compilers failed to compile", progName, exitCodes.stream().allMatch(item -> item == exitCodes.get(0)) ? ConcurrentFuzzer.COMPILER_ERROR_BUG_DIR : ConcurrentFuzzer.COMPILER_ERROR_MISMATCH_BUG_DIR);
       return;
     }
     List<String> runResults;
@@ -52,31 +38,72 @@ public class BugCheckTask implements Runnable {
     }
 
     assert(runResults.size() == ConcurrentFuzzer.COMPILERS.length);
-    if (!runResults.stream().allMatch(item -> item.equals(runResults.getFirst()))) {
-      System.out.println("BUG FOUND: Miscompilation found when running " + progName);
-      File destination = new File(ConcurrentFuzzer.COMPILER_MISCOMPILATION_BUG_DIR + progName);
-      try {destination.createNewFile();} catch (IOException e) {}
-      new File(progPath).renameTo(destination);
+    if (!runResults.stream().allMatch(item -> item.equals(runResults.get(0)))) {
+      handleBug("Miscompilation found when running", progName, ConcurrentFuzzer.COMPILER_MISCOMPILATION_BUG_DIR);
     }
     cleanUp();
   }
+
+  private void handleBug(String bugMessage, String progName, String bugDir) {
+    System.out.println("BUG FOUND: " + bugMessage + " " + progName);
+    File destination = new File(bugDir + progName);
+    try {
+      destination.createNewFile();
+    } catch (IOException e) {
+      System.out.println("Failed to create bug file: " + e.getMessage());
+    }
+    new File(progPath).renameTo(destination);
+    cleanUp();
+  }
+
   private List<String> runProgram() throws Exception {
     List<String> results = new ArrayList<>();
     for (String compiler : ConcurrentFuzzer.COMPILERS) {
       ProcessBuilder pb = new ProcessBuilder("./runCompiledJar.sh", "../" + ConcurrentFuzzer.TEMP_DIR + jarName(progName, compiler));
       pb.directory(new File("./scripts"));
-
       Process p = pb.start();
-      String errors = new String(p.getErrorStream().readAllBytes());
-      String output = new String(p.getInputStream().readAllBytes());
+      String output = readProcessOutput(p);
+      int exitCode = p.waitFor();
+      if (exitCode == 124) {
+        throw new RuntimeException("Running " + progName + " timed out");
+      }
+      results.add(output);
+    }
+    return results;
+  }
+
+  private List<Integer> compileProgram() throws Exception {
+    List<Integer> exitCodes = new ArrayList<>();
+    for (String compiler : ConcurrentFuzzer.COMPILERS) {
+      ProcessBuilder pb = new ProcessBuilder("./compileProgram.sh",
+        "../" + ConcurrentFuzzer.COMPILERS_DIR + compiler,
+        "../" + progPath,
+        "../" + ConcurrentFuzzer.TEMP_DIR + jarName(progName, compiler));
+      pb.directory(new File("./scripts"));
+      Process p = pb.start();
+      readProcessOutput(p); // Read output to avoid blocking
       int exitCode = p.waitFor();
       if (exitCode == 124) {
         throw new RuntimeException("Compiling " + progName + " timed out");
       }
-
-      results.add(output + errors);
+      exitCodes.add(exitCode);
     }
-    return results;
+    return exitCodes;
+  }
+
+  private String readProcessOutput(Process p) throws IOException {
+    try (BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
+         BufferedReader stdError = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
+      StringBuilder output = new StringBuilder();
+      String s;
+      while ((s = stdInput.readLine()) != null) {
+        output.append(s).append("\n");
+      }
+      while ((s = stdError.readLine()) != null) {
+        output.append(s).append("\n");
+      }
+      return output.toString();
+    }
   }
 
   private void cleanUp() {
@@ -89,23 +116,5 @@ public class BugCheckTask implements Runnable {
 
   private String jarName(String progName, String compiler) {
     return progName.split(".kt")[0] + compiler + ".jar";
-  }
-
-  private List<Integer> compileProgram() throws Exception {
-    List<Integer> exitCodes = new ArrayList<>();
-    for (String compiler : ConcurrentFuzzer.COMPILERS) {
-      ProcessBuilder pb = new ProcessBuilder("./compileProgram.sh", 
-      "../" + ConcurrentFuzzer.COMPILERS_DIR + compiler, 
-      "../" + progPath, 
-      "../" + ConcurrentFuzzer.TEMP_DIR + jarName(progName, compiler));
-      pb.directory(new File("./scripts"));
-      Process p = pb.start();
-      int exitCode = p.waitFor();
-      if (exitCode == 124) {
-        throw new RuntimeException("Compiling " + progName + " timed out");
-      }
-      exitCodes.add(exitCode);
-    } 
-    return exitCodes;
   }
 }
